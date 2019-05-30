@@ -24,7 +24,7 @@ namespace DynamicCommand
         public string LocationName { get; set; }
         public int ImageType { get; set; }
         public string UserDefinedBatchID { get; set; }
-        public string ForceUpdate { get; set; }
+        public bool ForceUpdate { get; set; }
 
     }
 }

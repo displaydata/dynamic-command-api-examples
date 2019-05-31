@@ -286,37 +286,6 @@ namespace CodeExamples
             var product = await response.Content.ReadAsAsync<Product>();
         }
 
-        private async Task SendImage(string objectID, int page = 1, string locationName = null, string batchID = null)
-        {
-            //Create an image object. Read the image as bytes and convert to base64.
-            Image image = new Image
-            {
-                ImageBase64 = Convert.ToBase64String(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png")),
-                ObjectID = objectID,
-                //The type of display this image is meant for.
-                //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
-                PageID = page,
-                //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
-                ImageType = 3
-            };
-
-            //Send the image as a local override image
-            if (locationName != null)
-            {
-                image.LocationName = locationName;
-            }
-
-            //Use a user supplied batchID
-            //For more information on how to use this feature see section 5.1 of the System Management documentation.
-            if (batchID != null)
-            {
-                image.UserDefinedBatchID = batchID;
-            }
-            var response = await _client.PostApiAsync($"api/objects/{image.ObjectID}/images", image);
-            response.EnsureSuccessStatusCode();
-        }
-
         private async Task SendImage(List<string> objectIDs, int page = 1, string locationName = null, string batchID = null)
         {
             //Create an image object. Read the image as bytes and convert to base64.
@@ -354,7 +323,7 @@ namespace CodeExamples
             //Add product to send image to
             Product newProduct = await AddProduct();
             //Send a Global image
-            await SendImage(newProduct.ObjectID);
+            await SendImage(new List<string> { newProduct.ObjectID });
         }
 
         [Test]
@@ -363,7 +332,7 @@ namespace CodeExamples
             //Add product to send image to
             Product newProduct = await AddProduct();
             //Send a local override image to existingLocation1
-            await SendImage(newProduct.ObjectID, page: 1, locationName: existingLocation1.Name);
+            await SendImage(new List<string> { newProduct.ObjectID }, page: 1, locationName: existingLocation1.Name);
         }
 
         [Test]
@@ -380,8 +349,8 @@ namespace CodeExamples
         {
             //Send local override images
             Product newProduct = await AddProduct();
-            await SendImage(newProduct.ObjectID, page: 1, locationName: existingLocation1.Name);
-            await SendImage(newProduct.ObjectID, page: 2, locationName: existingLocation1.Name);
+            await SendImage(new List<string> { newProduct.ObjectID }, page: 1, locationName: existingLocation1.Name);
+            await SendImage(new List<string> { newProduct.ObjectID }, page: 2, locationName: existingLocation1.Name);
 
             //Provide a specification on which local overrides to clear
 
@@ -417,7 +386,7 @@ namespace CodeExamples
         {
             //Send global images
             Product newProduct = await AddProduct();
-            await SendImage(newProduct.ObjectID);
+            await SendImage(new List<string> { newProduct.ObjectID });
 
             //Provide a specification on which global images to clear
             var clearProductPagesSpec = new ClearProductPagesSpec
@@ -541,10 +510,10 @@ namespace CodeExamples
             foreach (Product product in products)
             {
                 //Create an image object. Read the image as bytes and convert to base64.
-                Image image = new Image
+                MultiProductImage image = new MultiProductImage
                 {
                     ImageBase64 = Convert.ToBase64String(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png")),
-                    ObjectID = product.ObjectID,
+                    ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
                     DisplayTypeID = 11,
@@ -560,8 +529,8 @@ namespace CodeExamples
 
                 //Create a message to send an image.
                 //Create the different parts of the multipart content
-                HttpMessageContent sendImageContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/objects/{image.ObjectID}/images"));
-                sendImageContent.HttpRequestMessage.Content = new ObjectContent<Image>(image, new JsonMediaTypeFormatter());
+                HttpMessageContent sendImageContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/objects/imagetomultipleobjects"));
+                sendImageContent.HttpRequestMessage.Content = new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter());
                 content.Add(sendImageContent);
             }
 

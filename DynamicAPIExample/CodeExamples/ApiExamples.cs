@@ -128,7 +128,7 @@ namespace CodeExamples
         public async Task SetLocationDefaultFirmware()
         {
             var latestFirmware = await GetDefaultCommunicatorFirmware();
-            var response = await _client.PostApiAsync($"api/locations/name={existingLocation1.Name}", latestFirmware);
+            var response = await _client.PostApiAsync($"api/locations/name={existingLocation1.Name}/communicatorfirmware", latestFirmware);
             response.EnsureSuccessStatusCode();
 
         }
@@ -288,17 +288,15 @@ namespace CodeExamples
 
         private async Task SendImage(List<string> objectIDs, int page = 1, string locationName = null, string batchID = null)
         {
-            //Create an image object. Read the image as bytes and convert to base64.
+           
+            //Create an image object.
             MultiProductImage image = new MultiProductImage
             {
-                ImageBase64 = Convert.ToBase64String(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png")),
                 ObjectIDs = objectIDs,
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
                 DisplayTypeID = 11,
                 PageID = page,
-                //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
-                ImageType = 3
             };
 
             //Send the image as a local override image
@@ -313,7 +311,20 @@ namespace CodeExamples
             {
                 image.UserDefinedBatchID = batchID;
             }
-            var response = await _client.PostApiAsync($"api/objects/imagetomultipleobjects", image);
+
+            MultipartContent content = new MultipartContent("related");
+            content.Add(new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter()));
+            var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
+            //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
+            imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            content.Add(imagePartContent);
+       
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/objects/imagetomultipleobjects")
+            {
+                Content = content
+            };
+
+            var response = await _client.SendAsync(request);
             response.EnsureSuccessStatusCode();
         }
 
@@ -509,17 +520,172 @@ namespace CodeExamples
 
             foreach (Product product in products)
             {
-                //Create an image object. Read the image as bytes and convert to base64.
+                //Create an image object.
                 MultiProductImage image = new MultiProductImage
                 {
-                    ImageBase64 = Convert.ToBase64String(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png")),
                     ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
                     DisplayTypeID = 11,
                     PageID = 1,
-                    //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
-                    ImageType = 3,
+                    //Send the image as a local override image
+                    LocationName = existingLocation1.Name,
+                    //Use a user supplied batchID
+                    //For more information on how to use this feature see section 5.1 of the System Management documentation.
+                    UserDefinedBatchID = batchID
+                };
+
+                //Create a message to send an image.
+                //Create the different parts of the multipart content
+                MultipartContent imageContent = new MultipartContent("related");
+                imageContent.Add(new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter()));
+                var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
+                imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+                imageContent.Add(imagePartContent);
+
+                HttpMessageContent sendImageContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/objects/imagetomultipleobjects"));
+                sendImageContent.HttpRequestMessage.Content = imageContent;
+                content.Add(sendImageContent);
+            }
+
+            HttpResponseMessage response = await SendContentAsBatchRequest(content);
+            List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
+            foreach (HttpResponseMessage individualResponse in responses)
+            {
+                individualResponse.EnsureSuccessStatusCode();
+            }
+        }
+
+        private static byte[] GetEmbeddedImageBytes(string imageName)
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            using (var resourceStream = assembly.GetManifestResourceStream($"CodeExamples.EmbeddedResources.{imageName}"))
+            {
+                var imageBytes = new byte[resourceStream.Length];
+                var bytesRead = resourceStream.Read(imageBytes, 0, imageBytes.Length);
+                if (bytesRead != imageBytes.Length)
+                {
+                    throw new Exception("Short read from resource stream");
+                }
+                return imageBytes;
+            }
+        }
+
+        [Test]
+        public async Task StoreImageMultipartAsync()
+        {
+            await StoreImageMultipart();
+        }
+
+        [Test]
+        public async Task StoreImageAndThenSendAsync()
+        {
+            var imageRef = await StoreImageMultipart();
+            Product newProduct = await AddProduct();
+            await SendImageUsingReferenceAsync(new List<string> { newProduct.ObjectID }, imageRef);
+        }
+
+        [Test]
+        public async Task StoreImageAndThenBatchSendAsync()
+        {
+            var imageRef = await StoreImageMultipart();
+            await SendImageBatchUsingReferenceAsync(imageRef);
+        }
+
+        private async Task<ImageRef> StoreImageMultipart()
+        {
+            MultipartContent content = new MultipartContent("mixed");
+
+            //Create an image object.
+            Image image = new Image
+            {
+                //The type of display this image is meant for.
+                //See Appendix A of the API reference for the full list.
+                DisplayTypeID = 11,
+            };
+            //Create a message to send an image.
+            //Create the different parts of the multipart content
+            HttpContent sendImageContent = new ObjectContent<Image>(image, new JsonMediaTypeFormatter());
+            content.Add(sendImageContent);
+
+            //Read the image as bytes.
+            byte[] imageBytes = GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png");
+            HttpContent byteArrayContent = new ByteArrayContent(imageBytes);
+            //In multi-type requests the ImageType must be specified. If the ImageType is also specified in the Image object this will override it.
+            byteArrayContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            content.Add(byteArrayContent);
+
+            //Create the request
+            HttpRequestMessage storeImageRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/images")
+            {
+                //Associate the content with the message
+                Content = content
+            };
+
+            HttpResponseMessage response = await _client.SendAsync(storeImageRequest);
+            response.EnsureSuccessStatusCode();
+
+            var imageRef = await response.Content.ReadAsAsync<ImageRef>();
+            Assert.That(imageRef.ImageReference, Does.StartWith("dd-imagestore:///"));
+            return imageRef;
+        }
+
+        private async Task SendImageUsingReferenceAsync(List<string> objectIDs, ImageRef imageRef, int page = 1, string locationName = null, string batchID = null)
+        {
+
+            //Create an image object.
+            MultiProductImage image = new MultiProductImage
+            {
+                ImageReference = imageRef.ImageReference,
+                ObjectIDs = objectIDs,
+                //The type of display this image is meant for.
+                //See Appendix A of the API reference for the full list.
+                DisplayTypeID = 11,
+                PageID = page,
+            };
+
+            //Send the image as a local override image
+            if (locationName != null)
+            {
+                image.LocationName = locationName;
+            }
+
+            //Use a user supplied batchID
+            //For more information on how to use this feature see section 5.1 of the System Management documentation.
+            if (batchID != null)
+            {
+                image.UserDefinedBatchID = batchID;
+            }
+
+            var response = await _client.PostApiAsync<MultiProductImage>("api/objects/imagetomultipleobjects", image);
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task SendImageBatchUsingReferenceAsync(ImageRef imageRef)
+        {
+            //A batch API endpoint can be used to send multiple requests together. This cuts down on excess HTTP traffic.
+            //This add display batch request can be done as a normal PUT request if a batch request is not required.
+
+            //Create the multipart/mixed message content
+            var batchID = "batch_" + Guid.NewGuid();
+            MultipartContent content = new MultipartContent("mixed", batchID);
+            var products = new List<Product>();
+            for (int i = 0; i < 100; i++)
+            {
+                products.Add(await AddProduct());
+            }
+
+            foreach (Product product in products)
+            {
+                //Create an image object.
+                MultiProductImage image = new MultiProductImage
+                {
+                    ImageReference = imageRef.ImageReference,
+                    ObjectIDs = new List<string> { product.ObjectID },
+                    //The type of display this image is meant for.
+                    //See Appendix A of the API reference for the full list.
+                    DisplayTypeID = 11,
+                    PageID = 1,
                     //Send the image as a local override image
                     LocationName = existingLocation1.Name,
                     //Use a user supplied batchID
@@ -542,90 +708,5 @@ namespace CodeExamples
             }
         }
 
-
-        private static byte[] GetEmbeddedImageBytes(string imageName)
-        {
-            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-            using (var resourceStream = assembly.GetManifestResourceStream($"CodeExamples.EmbeddedResources.{imageName}"))
-            {
-                var imageBytes = new byte[resourceStream.Length];
-                var bytesRead = resourceStream.Read(imageBytes, 0, imageBytes.Length);
-                if (bytesRead != imageBytes.Length)
-                {
-                    throw new Exception("Short read from resource stream");
-                }
-                return imageBytes;
-            }
-        }
-
-        private async Task StoreImageBase64()
-        {
-            //Create an image object. Read the image as bytes and convert to base64.
-            Image image = new Image
-            {
-                ImageBase64 = Convert.ToBase64String(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png")),
-                //The type of display this image is meant for.
-                //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
-                //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
-                ImageType = 3
-            };
-
-            var response = await _client.PostApiAsync($"api/images/", image);
-            response.EnsureSuccessStatusCode();
-            var imageRef = await response.Content.ReadAsAsync<ImageRef>();
-            Assert.That(imageRef.ImageReference, Does.StartWith("dd-imagestore:///"));
-        }
-
-        [Test]
-        public async Task StoreImageBase64Async()
-        {
-            await StoreImageBase64();
-        }
-
-        [Test]
-        public async Task StoreImageMultipartAsync()
-        {
-            await StoreImageMultipart();
-        }
-
-        private async Task StoreImageMultipart()
-        {
-            MultipartContent content = new MultipartContent("mixed");
-
-            //Create an image object.
-            Image image = new Image
-            {
-                //The type of display this image is meant for.
-                //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
-                //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
-                ImageType = 3
-            };
-            //Create a message to send an image.
-            //Create the different parts of the multipart content
-            HttpContent sendImageContent = new ObjectContent<Image>(image, new JsonMediaTypeFormatter());
-            content.Add(sendImageContent);
-
-            //Read the image as bytes.
-            byte[] imageBytes = GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png");
-            HttpContent byteArrayContent = new ByteArrayContent(imageBytes);
-            //In multi-type requests the ImageType must be specified. If the ImageType is also specified in the Image object this will overide it.
-            byteArrayContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-            content.Add(byteArrayContent);
-
-            //Create the request
-            HttpRequestMessage storeImageRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/images")
-            {
-                //Associate the content with the message
-                Content = content
-            };
-
-            HttpResponseMessage response = await _client.SendAsync(storeImageRequest);
-            response.EnsureSuccessStatusCode();
-
-            var imageRef = await response.Content.ReadAsAsync<ImageRef>();
-            Assert.That(imageRef.ImageReference, Does.StartWith("dd-imagestore:///"));
-        }
     }
 }

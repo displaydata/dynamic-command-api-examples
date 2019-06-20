@@ -22,7 +22,7 @@ namespace CodeExamples
         {
             Name = "Location_001",
         };
-        //Change for the AddDisplay and DeleteDisplay examples to use a different set of display serial numbers that you can add and remove displays to the system.
+        //Change for the AddDisplay and RemoveDisplay examples to use a different set of display serial numbers that you can add and remove displays to the system.
         //The existingLocation1 above will require a working communicator for example code to work.
         List<Display> displaysToUse = new List<Display> {
             new Display { SerialNumber = "JA00000001B" },
@@ -480,10 +480,10 @@ namespace CodeExamples
         }
 
         [Test]
-        public async Task DeleteDisplaysAsync()
+        public async Task RemoveDisplaysAsync()
         {
             //A batch API endpoint can be used to send multiple requests together. This cuts down on excess HTTP traffic.
-            //This delete display batch request can be done as a normal DELETE request if a batch request is not required.
+            //This remove display batch request can be done as a normal DELETE request if a batch request is not required.
 
             //Create the multipart/mixed message content
             MultipartContent content = new MultipartContent("mixed", "batch_" + Guid.NewGuid());
@@ -491,8 +491,8 @@ namespace CodeExamples
             {
                 //Create a message to add a display.
                 //Create the different parts of the multipart content
-                HttpMessageContent deleteDisplayContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Delete, $"{ApiServer}/API/api/displays/{display.SerialNumber}"));
-                content.Add(deleteDisplayContent);
+                HttpMessageContent removeDisplayContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Delete, $"{ApiServer}/API/api/displays/{display.SerialNumber}"));
+                content.Add(removeDisplayContent);
             }
 
             HttpResponseMessage response = await SendContentAsBatchRequest(content);

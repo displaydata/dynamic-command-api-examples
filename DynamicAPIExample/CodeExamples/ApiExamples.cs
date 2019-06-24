@@ -507,17 +507,19 @@ namespace CodeExamples
         public async Task SendImagesAsync()
         {
             //A batch API endpoint can be used to send multiple requests together. This cuts down on excess HTTP traffic.
-            //This add display batch request can be done as a normal PUT request if a batch request is not required.
 
-            //Create the multipart/mixed message content
-            var batchID = "batch_" + Guid.NewGuid();
-            MultipartContent content = new MultipartContent("mixed", batchID);
+            //  Create the products we are going to assign the image to
             var products = new List<Product>();
             for (int i = 0; i < 100; i++)
             {
                 products.Add(await AddProduct());
             }
 
+            //Create the content body for the batch request
+            var batchID = "batch_" + Guid.NewGuid();
+            MultipartContent content = new MultipartContent("mixed", batchID);
+
+            //  Create the request for each image send that the batch is going to contain.
             foreach (Product product in products)
             {
                 //Create an image object.
@@ -537,8 +539,10 @@ namespace CodeExamples
 
                 //Create a message to send an image.
                 //Create the different parts of the multipart content
-                MultipartContent imageContent = new MultipartContent("related");
-                imageContent.Add(new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter()));
+                MultipartContent imageContent = new MultipartContent("related")
+                {
+                    new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter())
+                };
                 var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
                 imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
                 imageContent.Add(imagePartContent);
@@ -548,6 +552,7 @@ namespace CodeExamples
                 content.Add(sendImageContent);
             }
 
+            //  Now send all the image assigns as a single batch request.
             HttpResponseMessage response = await SendContentAsBatchRequest(content);
             List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
             foreach (HttpResponseMessage individualResponse in responses)
@@ -572,15 +577,27 @@ namespace CodeExamples
         }
 
         [Test]
-        public async Task StoreImageMultipartAsync()
+        public async Task StoreImageUsingMultipartMixedAsync()
         {
-            await StoreImageMultipart();
+            await StoreImageUsingMultipartMixed();
+        }
+
+        [Test]
+        public async Task StoreImageUsingMultipartRelatedAsync()
+        {
+            await StoreImageUsingMultipartRelated();
+        }
+
+        [Test]
+        public async Task StoreImageUsingMultipartFormDataAsync()
+        {
+            await StoreImageUsingMultipartFormData();
         }
 
         [Test]
         public async Task StoreImageAndThenSendAsync()
         {
-            var imageRef = await StoreImageMultipart();
+            var imageRef = await StoreImageUsingMultipartMixed();
             Product newProduct = await AddProduct();
             await SendImageUsingReferenceAsync(new List<string> { newProduct.ObjectID }, imageRef);
         }
@@ -588,14 +605,22 @@ namespace CodeExamples
         [Test]
         public async Task StoreImageAndThenBatchSendAsync()
         {
-            var imageRef = await StoreImageMultipart();
+            var imageRef = await StoreImageUsingMultipartRelated();
             await SendImageBatchUsingReferenceAsync(imageRef);
         }
 
-        private async Task<ImageRef> StoreImageMultipart()
+        private async Task<ImageRef> StoreImageUsingMultipartMixed()
         {
-            MultipartContent content = new MultipartContent("mixed");
+            return await StoreImageUsingMultipartRequest("mixed");
+        }
 
+        private async Task<ImageRef> StoreImageUsingMultipartRelated()
+        {
+            return await StoreImageUsingMultipartRequest("related");
+        }
+
+        private async Task<ImageRef> StoreImageUsingMultipartRequest(string multipartType)
+        {
             //Create an image object.
             Image image = new Image
             {
@@ -603,17 +628,50 @@ namespace CodeExamples
                 //See Appendix A of the API reference for the full list.
                 DisplayTypeID = 11,
             };
-            //Create a message to send an image.
-            //Create the different parts of the multipart content
-            HttpContent sendImageContent = new ObjectContent<Image>(image, new JsonMediaTypeFormatter());
-            content.Add(sendImageContent);
 
-            //Read the image as bytes.
-            byte[] imageBytes = GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png");
-            HttpContent byteArrayContent = new ByteArrayContent(imageBytes);
-            //In multi-type requests the ImageType must be specified. If the ImageType is also specified in the Image object this will override it.
-            byteArrayContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-            content.Add(byteArrayContent);
+            MultipartContent content = new MultipartContent(multipartType);
+            content.Add(new ObjectContent<Image>(image, new JsonMediaTypeFormatter()));
+            var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
+            //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
+            imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            content.Add(imagePartContent);
+
+            //Create the request
+            HttpRequestMessage storeImageRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/images")
+            {
+                //Associate the content with the message
+                Content = content
+            };
+
+            HttpResponseMessage response = await _client.SendAsync(storeImageRequest);
+            response.EnsureSuccessStatusCode();
+
+            var imageRef = await response.Content.ReadAsAsync<ImageRef>();
+            Assert.That(imageRef.ImageReference, Does.StartWith("dd-imagestore:///"));
+            return imageRef;
+        }
+
+        private async Task<ImageRef> StoreImageUsingMultipartFormData()
+        {
+            //Create an image object.
+            Image image = new Image
+            {
+                //The type of display this image is meant for.
+                //See Appendix A of the API reference for the full list.
+                DisplayTypeID = 11,
+            };
+
+            //  Must set the content disposition name appropriately to allow the API to recognise which part is the data and
+            //  which part is the image bytes.
+            MultipartContent content = new MultipartContent("form-data");
+            var objectPartContent = new ObjectContent<Image>(image, new JsonMediaTypeFormatter());
+            objectPartContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("inline") { Name = "data" };
+            content.Add(objectPartContent);
+            var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
+            //The image type that is being supplied, either BMP, PBM or PNG. See API reference for details.
+            imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            imagePartContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") { Name = "image" };
+            content.Add(imagePartContent);
 
             //Create the request
             HttpRequestMessage storeImageRequest = new HttpRequestMessage(HttpMethod.Post, $"{ApiServer}/API/api/images")
@@ -632,7 +690,6 @@ namespace CodeExamples
 
         private async Task SendImageUsingReferenceAsync(List<string> objectIDs, ImageRef imageRef, int page = 1, string locationName = null, string batchID = null)
         {
-
             //Create an image object.
             MultiProductImage image = new MultiProductImage
             {
@@ -664,20 +721,21 @@ namespace CodeExamples
         private async Task SendImageBatchUsingReferenceAsync(ImageRef imageRef)
         {
             //A batch API endpoint can be used to send multiple requests together. This cuts down on excess HTTP traffic.
-            //This add display batch request can be done as a normal PUT request if a batch request is not required.
 
-            //Create the multipart/mixed message content
-            var batchID = "batch_" + Guid.NewGuid();
-            MultipartContent content = new MultipartContent("mixed", batchID);
+            //  Create the products we are going to assign the image to
             var products = new List<Product>();
             for (int i = 0; i < 100; i++)
             {
                 products.Add(await AddProduct());
             }
 
+            //Create the content body for the batch request
+            var batchID = "batch_" + Guid.NewGuid();
+            MultipartContent content = new MultipartContent("mixed", batchID);
+
             foreach (Product product in products)
             {
-                //Create an image object.
+                //  Create the request for each image send that the batch is going to contain.
                 MultiProductImage image = new MultiProductImage
                 {
                     ImageReference = imageRef.ImageReference,
@@ -700,6 +758,7 @@ namespace CodeExamples
                 content.Add(sendImageContent);
             }
 
+            //  Now send all the image assigns as a single batch request.
             HttpResponseMessage response = await SendContentAsBatchRequest(content);
             List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
             foreach (HttpResponseMessage individualResponse in responses)

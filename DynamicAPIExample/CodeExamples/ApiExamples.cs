@@ -481,13 +481,58 @@ namespace CodeExamples
                 content.Add(addDisplayContent);
             }
 
+            await SendBatchAndCheckReturnResponsesSuccessAsync(content);
+        }
+
+
+        [Test]
+        public async Task GetDisplaysBatchAsync()
+        {
+            //A batch API endpoint can be used to send multiple requests together. This cuts down on excess HTTP traffic.
+            //This Get display batch request can be done as a normal GET request if a batch request is not required.
+
+            //Create the multipart/mixed message content
+            MultipartContent content = new MultipartContent("mixed", "batch_" + Guid.NewGuid());
+            foreach (Display display in displaysToUse)
+            {
+                //Create a message to get a display.
+                //Create the different parts of the multipart content
+                HttpMessageContent getDisplayContent = new HttpMessageContent(new HttpRequestMessage(HttpMethod.Get, $"{ApiServer}/API/api/displays/{display.SerialNumber}"));
+                content.Add(getDisplayContent);
+            }
+
+            var responses = await SendBatchAndCheckReturnResponsesSuccessAsync(content);
+
+            //Take the response list and read them into a display list
+            List<GetDisplaysResponse> displays = new List<GetDisplaysResponse> { };
+            foreach (HttpResponseMessage individualResponse in responses)
+            {
+                GetDisplaysResponse displayDetails = await individualResponse.Content.ReadAsAsync<GetDisplaysResponse>();
+
+                displays.Add(displayDetails);
+            }
+            
+            //Check the results
+            Assert.AreEqual(displaysToUse.Count(), displays.Count());
+
+            for (int index = 0;  index < displaysToUse.Count; index++)
+            {
+                Assert.AreEqual(displaysToUse[index].SerialNumber, displays[index].SerialNumber);
+            }
+        }
+
+
+        private async Task<List<HttpResponseMessage>> SendBatchAndCheckReturnResponsesSuccessAsync(MultipartContent content)
+        {
             HttpResponseMessage response = await SendContentAsBatchRequest(content);
             List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
             foreach (HttpResponseMessage individualResponse in responses)
             {
                 individualResponse.EnsureSuccessStatusCode();
             }
+            return responses;
         }
+
 
         [Test]
         public async Task RemoveDisplaysAsync()
@@ -505,12 +550,7 @@ namespace CodeExamples
                 content.Add(removeDisplayContent);
             }
 
-            HttpResponseMessage response = await SendContentAsBatchRequest(content);
-            List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
-            foreach (HttpResponseMessage individualResponse in responses)
-            {
-                individualResponse.EnsureSuccessStatusCode();
-            }
+            await SendBatchAndCheckReturnResponsesSuccessAsync(content);
         }
 
         [Test]
@@ -563,12 +603,7 @@ namespace CodeExamples
             }
 
             //  Now send all the image assigns as a single batch request.
-            HttpResponseMessage response = await SendContentAsBatchRequest(content);
-            List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
-            foreach (HttpResponseMessage individualResponse in responses)
-            {
-                individualResponse.EnsureSuccessStatusCode();
-            }
+            await SendBatchAndCheckReturnResponsesSuccessAsync(content);
         }
 
         private static byte[] GetEmbeddedImageBytes(string imageName)
@@ -769,12 +804,7 @@ namespace CodeExamples
             }
 
             //  Now send all the image assigns as a single batch request.
-            HttpResponseMessage response = await SendContentAsBatchRequest(content);
-            List<HttpResponseMessage> responses = await ExtractResponsesFromBatch(response);
-            foreach (HttpResponseMessage individualResponse in responses)
-            {
-                individualResponse.EnsureSuccessStatusCode();
-            }
+            await SendBatchAndCheckReturnResponsesSuccessAsync(content);
         }
 
         [Test]

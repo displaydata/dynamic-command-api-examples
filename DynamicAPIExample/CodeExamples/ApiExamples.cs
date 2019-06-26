@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
 using DynamicCommand;
-using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace CodeExamples
@@ -22,9 +19,10 @@ namespace CodeExamples
         {
             Name = "Location_001",
         };
+
         //Change for the AddDisplay and RemoveDisplay examples to use a different set of display serial numbers that you can add and remove displays to the system.
         //The existingLocation1 above will require a working communicator for example code to work.
-        List<Display> displaysToUse = new List<Display> {
+        private readonly List<Display> displaysToUse = new List<Display> {
             new Display { SerialNumber = "JA00000001B" },
             new Display { SerialNumber = "JA00000002B" },
             new Display { SerialNumber = "JA00000003B" },
@@ -33,6 +31,8 @@ namespace CodeExamples
         };
         // ---------------------------------------------------------------
 
+        //Make sure you have an additional API client created in your Dynamic Solution installation and put the client details here.
+        //If you do not do this then you will get an error when authenticating.
         private readonly DynamicCommandClient _client = new DynamicCommandClient(ApiServer, "new_client_id", "password", "admin@localhost", "password");
 
         [Test]
@@ -53,6 +53,7 @@ namespace CodeExamples
         [Test]
         public async Task AddLocationAsync()
         {
+            //Add a new location to Dynamic Solution.
             //Create new Location object 
             string locationGuid = Guid.NewGuid().ToString();
             Location newLocation = new Location
@@ -85,11 +86,11 @@ namespace CodeExamples
         [Test]
         public async Task UpdateLocationAsync()
         {
-            //Ensure location exists and that we only get one result
+            //Ensure the location exists and that we only get one result
             var locations = await GetLocations(existingLocation1.Name);
             Assert.AreEqual(1, locations.Count);
 
-            //Update location
+            //Update the location by changing the location comment
             Location updatedLocationDetails = new Location
             {
                 Comments = "Updated Comment"
@@ -101,6 +102,7 @@ namespace CodeExamples
         [Test]
         public async Task GetLocationsAsync()
         {
+            //Get a single location by name.
             var locations = await GetLocations(existingLocation1.Name);
 
             //Make sure at least one location was found.
@@ -121,12 +123,14 @@ namespace CodeExamples
         [Test]
         public async Task GetDefaultCommunicatorFirmwareAsync()
         {
+            //Get details about default Dynamic Communicator firmware version that will be used for newly created locations.
             await GetDefaultCommunicatorFirmware();
         }
 
         [Test]
         public async Task SetLocationDefaultFirmware()
         {
+            //Change the Dynamic Communicator firmware in use for a location to the latest version.
             var latestFirmware = await GetDefaultCommunicatorFirmware();
             var response = await _client.PostApiAsync($"api/locations/name={existingLocation1.Name}/communicatorfirmware", latestFirmware);
             response.EnsureSuccessStatusCode();
@@ -144,6 +148,7 @@ namespace CodeExamples
 
         public async Task<Communicator> GetCommunicator(string communicatorSerialNumber)
         {
+            //Get details of a single Dynamic Communicator by its serial number
             var response = await _client.GetApiAsync($"api/communicator/{communicatorSerialNumber}");
             response.EnsureSuccessStatusCode();
             var communicator = await response.Content.ReadAsAsync<Communicator>();
@@ -152,6 +157,8 @@ namespace CodeExamples
 
         public async Task<bool> IsLocationFirmwareOutOfDate(Location location)
         {
+            //Check a named location to see if it is running an out of date Dynamic Communicator firmware version.
+
             //Firmware version is only available on a per communicator basis
             //So request a list of communicators at a location and then request further details on each one.
             var latestFirmware = await GetDefaultCommunicatorFirmware();
@@ -172,6 +179,7 @@ namespace CodeExamples
         [Test]
         public async Task UpdateLocationFirmware()
         {
+            //Update all Dynamic Communicators at a named location to the latest available firmware version.
             var latestFirmware = await GetDefaultCommunicatorFirmware();
             var response = await _client.PostApiAsync($"api/locations/name={existingLocation1.Name}/communicatorfirmware", latestFirmware);
             response.EnsureSuccessStatusCode();
@@ -312,6 +320,7 @@ namespace CodeExamples
                 image.UserDefinedBatchID = batchID;
             }
 
+            //Add the image data to the request
             MultipartContent content = new MultipartContent("related");
             content.Add(new ObjectContent<MultiProductImage>(image, new JsonMediaTypeFormatter()));
             var imagePartContent = new ByteArrayContent(GetEmbeddedImageBytes("Chroma29_enquire_test_296x128.png"));
@@ -319,6 +328,7 @@ namespace CodeExamples
             imagePartContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
             content.Add(imagePartContent);
        
+            //Finally send the request and check the result
             var request = new HttpRequestMessage(HttpMethod.Post, "api/objects/imagetomultipleobjects")
             {
                 Content = content
@@ -364,7 +374,6 @@ namespace CodeExamples
             await SendImage(new List<string> { newProduct.ObjectID }, page: 2, locationName: existingLocation1.Name);
 
             //Provide a specification on which local overrides to clear
-
             var clearProductPagesSpec = new ClearProductPagesSpec {
                 ClearObjectPages = new List<ClearObjectPage>
                 {
@@ -442,7 +451,7 @@ namespace CodeExamples
 
         private static async Task<List<HttpResponseMessage>> ExtractResponsesFromBatch(HttpResponseMessage response)
         {
-            //Reads the individual parts in the content and loads them in memory
+            //Reads the individual response parts in the content and loads them in memory
             MultipartMemoryStreamProvider responseContents = await response.Content.ReadAsMultipartAsync();
 
             var responses = new List<HttpResponseMessage>();

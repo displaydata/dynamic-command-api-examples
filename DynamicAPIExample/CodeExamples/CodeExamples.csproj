@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ApiExamples.cs" />
+    <Compile Include="Models\AssignProductsToDisplays.cs" />
     <Compile Include="Models\Communicator.cs" />
     <Compile Include="Models\ImageRef.cs" />
     <Compile Include="TraceLogging.cs" />

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Http.Headers;
@@ -774,6 +775,38 @@ namespace CodeExamples
             {
                 individualResponse.EnsureSuccessStatusCode();
             }
+        }
+
+        [Test]
+        public async Task UnassignProductsFromDisplayAsync()
+        {
+            //Get the display to use: this assumes that you have already added the display.
+            //You can use AddDisplaysAsync()
+            var display = displaysToUse.First();
+
+            //Add a product to use
+            Product product = await AddProduct();
+
+            //Assigning the product to display
+            await AssignProduct(product.ObjectID,display.SerialNumber);
+
+            //Unassign all products from the display
+            var response = await _client.PostApiAsync($"api/displays/{display.SerialNumber}/objects/remove/", true);
+            response.EnsureSuccessStatusCode();
+        }
+
+        private async Task AssignProduct(string objectID, string serialNumber)
+        {
+            //Creating a list of products
+            List<ObjectSequence> products = new List<ObjectSequence>()
+            {
+                //Add products to list
+                new ObjectSequence (){ ObjectId = objectID, Sequence = 1}
+            };
+
+            //Assigning product to display
+            var response = await _client.PostApiAsync($"api/displays/{serialNumber}/objects", products);
+            response.EnsureSuccessStatusCode();
         }
 
     }

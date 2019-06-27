@@ -209,7 +209,7 @@ namespace CodeExamples
                 //ObjectID should be unique
                 ObjectID = "Sample_" + Guid.NewGuid(),
                 //Searchable values should be unique
-                SearchableValues = new List<string>() { "Sample_" + Guid.NewGuid() },
+                SearchableValues = new List<string>() { $"Sample_{Guid.NewGuid()}", $"Sample_{Guid.NewGuid()}" },
                 ObjectName = "Sample Product",
                 ObjectDescription = "Some text about the sample product"
             };
@@ -845,5 +845,48 @@ namespace CodeExamples
             };
         }
 
+
+        [Test]
+        public async Task AssignMultipleProductsToDisplayBySearchValueAsync()
+        {
+            //Add products to use
+            var product1 = await AddProduct();
+            var product2 = await AddProduct();
+
+            //Constructing a list of search values to pass to the API
+            List<SearchValueObject> searchValues = new List<SearchValueObject>()
+            {
+                new SearchValueObject (){ SearchValue = product1.SearchableValues.First(), Sequence = 1},
+                new SearchValueObject (){ SearchValue = product2.SearchableValues.Last(), Sequence = 2}
+            };
+
+            //Get the display to use: this assumes that you have already added the display.
+            //You can use AddDisplaysAsync()
+            var display = displaysToUse.First();
+
+            //Assign multiple products to the display using searchable values
+            var response = await _client.PostApiAsync($"api/displays/{display.SerialNumber}/searchablevalues", new SearchValuesObject() { SearchValues = searchValues});
+            response.EnsureSuccessStatusCode();
+        }
+        [Test]
+        public async Task AssignProductToDisplayBySearchValueAsync()
+        {
+            //Add products to use
+            var product = await AddProduct();
+
+            //Constructing a list of search values to pass to the API
+            List<SearchValueObject> searchValues = new List<SearchValueObject>()
+            {
+                new SearchValueObject (){ SearchValue = product.SearchableValues.First(), Sequence = 1}
+            };
+
+            //Get the display to use: this assumes that you have already added the display.
+            //You can use AddDisplaysAsync()
+            var display = displaysToUse.First();
+
+            //Assign multiple products to the display using searchable values
+            var response = await _client.PostApiAsync($"api/displays/{display.SerialNumber}/searchablevalues", new SearchValuesObject() { SearchValues = searchValues });
+            response.EnsureSuccessStatusCode();
+        }
     }
 }

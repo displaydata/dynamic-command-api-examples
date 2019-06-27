@@ -809,5 +809,41 @@ namespace CodeExamples
             response.EnsureSuccessStatusCode();
         }
 
+        [Test]
+        public async Task AssignProductToDisplayAsync()
+        {
+            //Add product to use
+            var product = await AddProduct();
+
+            //Constructing a list of products to pass to the API
+            List<ObjectSequence> products = new List<ObjectSequence>()
+            {
+                new ObjectSequence (){ ObjectId = product.ObjectID, Sequence = 1}
+            };  
+           
+            //Get the display to use: this assumes that you have already added the display.
+            //You can use AddDisplaysAsync()
+            var display = displaysToUse.First();
+            
+            //Assign the product to the display
+            var response = await _client.PostApiAsync($"api/displays/{display.SerialNumber}/objects", products);
+            response.EnsureSuccessStatusCode();
+        }
+
+        [Test]
+        public async Task AssignMultipleProductsToDisplayAsync()
+        {
+            //Add products to use
+            var product1 = await AddProduct();
+            var product2 = await AddProduct();
+
+            //Constructing a list of products to pass to the API
+            List<ObjectSequence> products = new List<ObjectSequence>()
+            {
+                new ObjectSequence (){ ObjectId = product1.ObjectID, Sequence = 1},
+                new ObjectSequence (){ ObjectId = product2.ObjectID, Sequence = 2}
+            };
+        }
+
     }
 }

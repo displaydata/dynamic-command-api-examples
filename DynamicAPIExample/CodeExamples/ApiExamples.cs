@@ -23,11 +23,11 @@ namespace CodeExamples
         //Change for the AddDisplay and RemoveDisplay examples to use a different set of display serial numbers that you can add and remove displays to the system.
         //The existingLocation1 above will require a working communicator for example code to work.
         private readonly List<Display> displaysToUse = new List<Display> {
-            new Display { SerialNumber = "JA00000001B" },
-            new Display { SerialNumber = "JA00000002B" },
-            new Display { SerialNumber = "JA00000003B" },
-            new Display { SerialNumber = "JA00000004B" },
-            new Display { SerialNumber = "JA00000005B" }
+            new Display { SerialNumber = "JA00000001C" },
+            new Display { SerialNumber = "JA00000002C" },
+            new Display { SerialNumber = "JA00000003C" },
+            new Display { SerialNumber = "JA00000004C" },
+            new Display { SerialNumber = "JA00000005C" }
         };
         // ---------------------------------------------------------------
 

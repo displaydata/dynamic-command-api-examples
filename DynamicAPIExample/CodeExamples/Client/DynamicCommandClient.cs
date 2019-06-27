@@ -126,6 +126,11 @@ namespace DynamicCommand
             return response;
         }
 
+        public async Task<HttpResponseMessage> PostApiAsync(string path, bool preAuthenticate = false)
+        {
+            return await PostApiAsync(path, "", true);
+        }
+
         public async Task<HttpResponseMessage> PostApiAsync<T>(string path, T content, bool preAuthenticate = false)
         {
             if (preAuthenticate)
@@ -140,6 +145,11 @@ namespace DynamicCommand
                 response = await _client.PostAsJsonAsync(path, content);
             }
             return response;
+        }
+
+        public async Task<HttpResponseMessage> PutApiAsync(string path, bool preAuthenticate = false)
+        {
+            return await PutApiAsync(path, "", preAuthenticate);
         }
 
         public async Task<HttpResponseMessage> PutApiAsync<T>(string path, T content, bool preAuthenticate = false)

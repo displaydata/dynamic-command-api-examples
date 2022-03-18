@@ -76,8 +76,8 @@ namespace CodeExamples
 
         private async Task<List<Location>> GetLocations(string name)
         {
-            //Search for locations using locationName. clientId is a legacy parameter that it always required for this call.
-            var response = await _client.GetApiAsync($"api/locations?clientId=0&locationName={name}");
+            //Search for locations using locationName.
+            var response = await _client.GetApiAsync($"api/locations?locationName={name}");
             response.EnsureSuccessStatusCode();
             //A list of locations will be returned.
             var locations = await response.Content.ReadAsAsync<List<Location>>();

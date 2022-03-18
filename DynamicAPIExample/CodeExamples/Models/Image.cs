@@ -5,7 +5,7 @@ namespace DynamicCommand
     public class Image
     {
         public string ObjectID { get; set; }
-        public int DisplayTypeID { get; set; }
+        public string DisplayTypeName { get; set; }
         public int PageID { get; set; }
         public string LocationName { get; set; }
         public int? ImageType { get; set; }
@@ -18,7 +18,7 @@ namespace DynamicCommand
     {
         public string ImageReference { get; set; }
         public List<string> ObjectIDs { get; set; }
-        public int DisplayTypeID { get; set; }
+        public string DisplayTypeName { get; set; }
         public int PageID { get; set; }
         public string LocationName { get; set; }
         public int? ImageType { get; set; }

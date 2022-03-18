@@ -304,7 +304,7 @@ namespace CodeExamples
                 ObjectIDs = objectIDs,
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
                 PageID = page,
             };
 
@@ -578,7 +578,7 @@ namespace CodeExamples
                     ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
-                    DisplayTypeID = 11,
+                    DisplayTypeName = "Chroma29",
                     PageID = 1,
                     //Send the image as a local override image
                     LocationName = existingLocation1.Name,
@@ -671,7 +671,7 @@ namespace CodeExamples
             {
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
             };
 
             MultipartContent content = new MultipartContent(multipartType);
@@ -703,7 +703,7 @@ namespace CodeExamples
             {
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
             };
 
             //  Must set the content disposition name appropriately to allow the API to recognise which part is the data and
@@ -742,7 +742,7 @@ namespace CodeExamples
                 ObjectIDs = objectIDs,
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
                 PageID = page,
             };
 
@@ -787,7 +787,7 @@ namespace CodeExamples
                     ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
-                    DisplayTypeID = 11,
+                    DisplayTypeName = "Chroma29",
                     PageID = 1,
                     //Send the image as a local override image
                     LocationName = existingLocation1.Name,

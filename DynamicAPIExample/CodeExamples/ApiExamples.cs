@@ -76,8 +76,8 @@ namespace CodeExamples
 
         private async Task<List<Location>> GetLocations(string name)
         {
-            //Search for locations using locationName. clientId is a legacy parameter that it always required for this call.
-            var response = await _client.GetApiAsync($"api/locations?clientId=0&locationName={name}");
+            //Search for locations using locationName.
+            var response = await _client.GetApiAsync($"api/locations?locationName={name}");
             response.EnsureSuccessStatusCode();
             //A list of locations will be returned.
             var locations = await response.Content.ReadAsAsync<List<Location>>();
@@ -304,7 +304,7 @@ namespace CodeExamples
                 ObjectIDs = objectIDs,
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
                 PageID = page,
             };
 
@@ -578,7 +578,7 @@ namespace CodeExamples
                     ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
-                    DisplayTypeID = 11,
+                    DisplayTypeName = "Chroma29",
                     PageID = 1,
                     //Send the image as a local override image
                     LocationName = existingLocation1.Name,
@@ -671,7 +671,7 @@ namespace CodeExamples
             {
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
             };
 
             MultipartContent content = new MultipartContent(multipartType);
@@ -703,7 +703,7 @@ namespace CodeExamples
             {
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
             };
 
             //  Must set the content disposition name appropriately to allow the API to recognise which part is the data and
@@ -742,7 +742,7 @@ namespace CodeExamples
                 ObjectIDs = objectIDs,
                 //The type of display this image is meant for.
                 //See Appendix A of the API reference for the full list.
-                DisplayTypeID = 11,
+                DisplayTypeName = "Chroma29",
                 PageID = page,
             };
 
@@ -787,7 +787,7 @@ namespace CodeExamples
                     ObjectIDs = new List<string> { product.ObjectID },
                     //The type of display this image is meant for.
                     //See Appendix A of the API reference for the full list.
-                    DisplayTypeID = 11,
+                    DisplayTypeName = "Chroma29",
                     PageID = 1,
                     //Send the image as a local override image
                     LocationName = existingLocation1.Name,
